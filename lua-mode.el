@@ -1416,8 +1416,10 @@ The criteria for a continuing statement are:
 
 * the expression is not enclosed by a parentheses/braces/brackets"
   (let (prev-line continuation-pos parent-block-opener)
-    (save-excursion (setq prev-line (lua-forward-line-skip-blanks 'back)))
-    (and prev-line
+    (and (save-excursion
+           (back-to-indentation)
+           (and (not (looking-at "\\(--\\|$\\)"))
+                (setq prev-line (lua-forward-line-skip-blanks 'back))))
          (not (lua--continuation-breaking-line-p))
          (save-excursion
            (or
