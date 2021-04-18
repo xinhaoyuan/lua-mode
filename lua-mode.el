@@ -1839,7 +1839,7 @@ line containing block-open token for the first block-close token
 in the sequence.
 
 If not, return nil."
-  (let (case-fold-search leftmost-closer-info opener-info opener-pos)
+  (let (case-fold-search leftmost-closer-info opener-info opener-pos opener-column opener-line-indentation)
     (save-excursion
       (when (and (setq leftmost-closer-info (lua--goto-line-beginning-leftmost-closer parse-start))
                  (setq opener-info (lua--backward-up-list-noerror))
@@ -1865,10 +1865,23 @@ If not, return nil."
                    (and (string-equal (car opener-info) "then")
                         (member (car (lua--backward-up-list-noerror)) '("if" "elseif"))))
             (goto-char opener-pos)))
+        (setq opener-pos (point))
+        (setq opener-column (current-column))
+        (setq opener-line-indentation (current-indentation))
 
-        (let* ((modifier
-                 (lua-calculate-indentation-block-modifier opener-pos)))
-           (+ (current-indentation) modifier))
+        (cond
+         ;; Align with the opener if there is something after the opener in the same line.
+         ((and (member (car opener-info) '("(" "[" "{"))
+               (save-excursion
+                 (forward-char)
+                 (let ((found-bol (line-beginning-position)))
+                   (forward-comment (point-max))
+                   (zerop (count-lines found-bol (line-beginning-position)))))
+               )
+          opener-column)
+         (t
+          (back-to-indentation)
+          (+ opener-line-indentation (lua-calculate-indentation-block-modifier opener-pos))))
         ))))
 
 
