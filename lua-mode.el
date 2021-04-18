@@ -1502,10 +1502,9 @@ Don't use standalone."
     (save-excursion
       (let ((found-bol (line-beginning-position)))
         (forward-comment (point-max))
-        ;; If the next token is on this line and it's not a block opener,
-        ;; the next line should align to that token.
-        (if (and (zerop (count-lines found-bol (line-beginning-position)))
-                 (not (looking-at lua-indentation-modifier-regexp)))
+        ;; If the next token is on this line the next line should
+        ;; align to that token.
+        (if (zerop (count-lines found-bol (line-beginning-position)))
             (cons 'absolute (current-column))
           (cons 'relative lua-indent-level)))))
 
@@ -1553,7 +1552,8 @@ Don't use standalone."
             (cons 'remove-matching 0)
           (back-to-indentation)
           (setq opener-continuation-offset
-                (if (lua-is-continuing-statement-p-1) lua-indent-level 0))
+                (if (lua-is-continuing-statement-p-1)
+                    lua-indent-level 0))
 
           ;; Accumulate indentation up to opener, including indentation. If
           ;; there were no other indentation modifiers until said opener,
@@ -1807,22 +1807,44 @@ left-shifter expression. "
         (goto-char pos)
         return-val))))
 
+(defun lua--goto-line-beginning-leftmost-closer (&optional parse-start)
+  (let (case-fold-search pos line-end-pos return-val)
+    (save-excursion
+      (if parse-start (goto-char parse-start))
+      (setq line-end-pos (line-end-position))
+      (back-to-indentation)
+      (unless (lua-comment-or-string-p)
+        (cl-loop while (and (<= (point) line-end-pos)
+                            (looking-at lua-indentation-modifier-regexp))
+                 for token-info = (lua-get-block-token-info (match-string 0))
+                 for token-type = (lua-get-token-type token-info)
+                 while (not (eq token-type 'open))
+                 do (progn
+                      (setq pos (match-beginning 0)
+                            return-val token-info)
+                      (goto-char (match-end 0))
+                      (return)
+                      (forward-comment (line-end-position))))))
+    (when pos
+      (progn
+        (goto-char pos)
+        return-val))))
 
 (defun lua-calculate-indentation-override (&optional parse-start)
   "Return overriding indentation amount for special cases.
 
 If there's a sequence of block-close tokens starting at the
 beginning of the line, calculate indentation according to the
-line containing block-open token for the last block-close token
+line containing block-open token for the first block-close token
 in the sequence.
 
 If not, return nil."
-  (let (case-fold-search rightmost-closer-info opener-info opener-pos)
+  (let (case-fold-search leftmost-closer-info opener-info opener-pos)
     (save-excursion
-      (when (and (setq rightmost-closer-info (lua--goto-line-beginning-rightmost-closer parse-start))
+      (when (and (setq leftmost-closer-info (lua--goto-line-beginning-leftmost-closer parse-start))
                  (setq opener-info (lua--backward-up-list-noerror))
                  ;; Ensure opener matches closer.
-                 (string-match (lua-get-token-match-re rightmost-closer-info 'backward)
+                 (string-match (lua-get-token-match-re leftmost-closer-info 'backward)
                                (car opener-info)))
 
         ;; Special case: "middle" tokens like for/do, while/do, if/then,
@@ -1844,16 +1866,10 @@ If not, return nil."
                         (member (car (lua--backward-up-list-noerror)) '("if" "elseif"))))
             (goto-char opener-pos)))
 
-        ;; (let (cont-stmt-pos)
-        ;;   (while (setq cont-stmt-pos (lua-is-continuing-statement-p))
-        ;;     (goto-char cont-stmt-pos)))
-        ;; Exception cases: when the start of the line is an assignment,
-        ;; go to the start of the assignment instead of the matching item
-        (if (and lua-indent-close-paren-align
-                 (member (car opener-info) '("{" "(" "["))
-                 (not (lua-point-is-after-left-shifter-p)))
-            (current-column)
-          (current-indentation))))))
+        (let* ((modifier
+                 (lua-calculate-indentation-block-modifier opener-pos)))
+           (+ (current-indentation) modifier))
+        ))))
 
 
 (defun lua-calculate-indentation ()
