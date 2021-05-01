@@ -1449,7 +1449,8 @@ This true is when the line :
 
 * is continuing a statement itself
 
-* starts with a 1+ block-closer tokens, an top-most block opener is on a continuation line
+* starts with a 1+ block-closer tokens, where the top-most block opener is not a continuation breaker,
+  and it is on a continuation line
 "
   (save-excursion
     (if parse-start (goto-char parse-start))
@@ -1476,6 +1477,7 @@ This true is when the line :
      ;; Go to opener line
      while (and (lua--goto-line-beginning-rightmost-closer)
 		(lua--backward-up-list-noerror))
+     if (lua--continuation-breaking-line-p) return nil
      ;; If opener line is continuing, repeat. If opener line is not
      ;; continuing, return nil.
      always (lua-is-continuing-statement-p-1)
