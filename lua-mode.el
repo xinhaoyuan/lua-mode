@@ -1489,6 +1489,7 @@ This true is when the line :
 
 This is a helper function to lua-calculate-indentation-info.
 Don't use standalone."
+  (message "indentation pair %s %s" found-token found-pos)
   (cond
    ;; function is a bit tricky to indent right. They can appear in a lot ot
    ;; different contexts. Until I find a shortcut, I'll leave it with a simple
@@ -1559,6 +1560,7 @@ Don't use standalone."
                 (if (lua-is-continuing-statement-p-1)
                     lua-indent-level 0))
 
+          (message "opener-continuation-offset %d" opener-continuation-offset)
           ;; Accumulate indentation up to opener, including indentation. If
           ;; there were no other indentation modifiers until said opener,
           ;; ensure there is no continuation after the closer.
@@ -1622,6 +1624,7 @@ the block is opened."
   "Helper function for `lua-calculate-indentation-info'.
 
 Return list of indentation modifiers from point to BOUND."
+  (message "info-1 %s %d %d" indentation-info (point) bound)
   (while (lua-find-regexp 'forward lua-indentation-modifier-regexp
                           bound)
     (let ((found-token (match-string 0))
@@ -1644,6 +1647,8 @@ and relative each, and the shift/column to indent to."
       (lua-forward-line-skip-blanks 'back)
       (when (< cont-stmt-pos (point))
         (goto-char cont-stmt-pos)))
+
+    (message "back to line %d" (line-number-at-pos))
 
     ;; calculate indentation modifiers for the line itself
     (setq indentation-info (list (cons 'absolute (current-indentation))))
@@ -1679,6 +1684,7 @@ and relative each, and the shift/column to indent to."
   "Accumulates the indentation information previously calculated by
 lua-calculate-indentation-info. Returns either the relative indentation
 shift, or the absolute column to indent to."
+  (message "accumulating reversed-info = %s" reversed-indentation-info)
   (let (indentation-info
         (type 'relative)
         (accu 0))
@@ -1873,6 +1879,7 @@ If not, return nil."
         (setq opener-column (current-column))
         (setq opener-line-indentation (current-indentation))
 
+        (message "??? opener %s %d %d" opener-info opener-column opener-pos)
         (cond
          ((and (member (car opener-info) '("(" "[" "{"))
                (save-excursion
