@@ -1253,15 +1253,14 @@ no Lua code besides comments.  The point is put to the beginning of
 the line.
 
 Returns final value of point as integer or nil if operation failed."
+  (beginning-of-line)
   (let ((start-pos (point)))
     (if back
-        (progn
-          (beginning-of-line)
-          (lua-skip-ws-and-comments-backward))
+        (lua-skip-ws-and-comments-backward)
       (forward-line)
       (lua-skip-ws-and-comments-forward))
     (beginning-of-line)
-    (when (> (count-lines start-pos (point)) 0)
+    (when (not (eq start-pos (point)))
       (point))))
 
 (eval-when-compile
