@@ -1502,13 +1502,16 @@ Don't use standalone."
    ((and lua-indent-nested-block-content-align
 	 (member found-token (list "{" "(" "[")))
     (save-excursion
-      (let ((found-bol (line-beginning-position)))
+      (let ((found-bol (line-beginning-position))
+            (cont-p (lua-is-continuing-statement-p)))
         (forward-comment (point-max))
         ;; If the next token is on this line the next line should
         ;; align to that token.
         (if (zerop (count-lines found-bol (line-beginning-position)))
             (cons 'absolute (current-column))
-          (cons 'relative lua-indent-level)))))
+          (if cont-p
+              `(multiple . ((continued-line . ,lua-indent-level) (relative . ,lua-indent-level)))
+            (cons 'relative lua-indent-level))))))
 
    ;; These are not really block starters. They should not add to indentation.
    ;; The corresponding "then" and "do" handle the indentation.
@@ -1881,6 +1884,9 @@ If not, return nil."
                    (zerop (count-lines found-bol (line-beginning-position)))))
                )
           opener-column)
+         ((and (lua-is-continuing-statement-p) (not (lua-is-continuing-statement-p-1)))
+          (back-to-indentation)
+          (+ opener-line-indentation lua-indent-level (lua-calculate-indentation-block-modifier opener-pos)))
          (t
           (back-to-indentation)
           (+ opener-line-indentation (lua-calculate-indentation-block-modifier opener-pos))))
