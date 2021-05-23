@@ -1472,16 +1472,15 @@ This true is when the line :
     ;; opener line, ") + long_function_name2({", which in its turn is decided
     ;; by the "long_function_name(" line, which is a continuation line
     ;; because the line before it ends with a binary operator.
-    (cl-loop
-     ;; Go to opener line
-     while (and (lua--goto-line-beginning-rightmost-closer)
-		(lua--backward-up-list-noerror))
-     if (lua--continuation-breaking-line-p) return nil
-     ;; If opener line is continuing, repeat. If opener line is not
-     ;; continuing, return nil.
-     always (lua-is-continuing-statement-p-1)
-     ;; We get here if there was no opener to go to: check current line.
-     finally return (lua-is-continuing-statement-p-1))))
+    (let (cont-stmt-pos)
+      (cl-loop
+       ;; Store the result for current line.
+       do (setq cont-stmt-pos (lua-is-continuing-statement-p-1))
+       ;; Return the result if true, or try to go to the opener line.
+       while (and (not cont-stmt-pos) (lua--goto-line-beginning-rightmost-closer) (lua--backward-up-list-noerror))
+       ;; ;; Is this needed?
+       ;; if (lua--continuation-breaking-line-p) return nil
+       finally return cont-stmt-pos))))
 
 (defun lua-make-indentation-info-pair (found-token found-pos)
   "Create a pair from FOUND-TOKEN and FOUND-POS for indentation calculation.
