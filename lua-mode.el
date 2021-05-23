@@ -1639,9 +1639,9 @@ is collected in a list of indentation info pairs, which denote absolute
 and relative each, and the shift/column to indent to."
   (let (indentation-info cont-stmt-pos)
     (while (setq cont-stmt-pos (lua-is-continuing-statement-p))
-      (lua-forward-line-skip-blanks 'back)
-      (when (< cont-stmt-pos (point))
-        (goto-char cont-stmt-pos)))
+      (goto-char cont-stmt-pos)
+      (when (eq (current-indentation) (current-column))
+        (lua-forward-line-skip-blanks 'back)))
 
     ;; calculate indentation modifiers for the line itself
     (setq indentation-info (list (cons 'absolute (current-indentation))))
